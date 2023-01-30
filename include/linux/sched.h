@@ -2406,3 +2406,8 @@ static inline void sched_core_fork(struct task_struct *p) { }
 extern void sched_set_stop_task(int cpu, struct task_struct *stop);
 
 #endif
+
+int migrate_task_to(struct task_struct *p, int target_cpu);
+int set_cpus_allowed_ptr(struct task_struct *p, const struct cpumask *new_mask);
+void __migrate_swap_task(struct task_struct *p, int cpu);
+void insert_migreq(struct task_struct *p, int target_cpu);

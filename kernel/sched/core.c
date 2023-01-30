@@ -2694,6 +2694,20 @@ void release_user_cpus_ptr(struct task_struct *p)
  * pending affinity completion is preceded by an uninstallation of
  * p->migration_pending done with p->pi_lock held.
  */
+
+void insert_migreq(struct task_struct *p, int target_cpu){
+	struct set_affinity_pending my_pending = { };
+	refcount_set(&my_pending.refs, 1);
+			init_completion(&my_pending.done);
+			my_pending.arg = (struct migration_arg) {
+				.task = p,
+				.dest_cpu = target_cpu,
+				.pending = &my_pending,
+			};
+
+			p->migration_pending = &my_pending;
+}
+
 static int affine_move_task(struct rq *rq, struct task_struct *p, struct rq_flags *rf,
 			    int dest_cpu, unsigned int flags)
 {
@@ -3133,9 +3147,7 @@ void set_task_cpu(struct task_struct *p, unsigned int new_cpu)
 
 	__set_task_cpu(p, new_cpu);
 }
-
-#ifdef CONFIG_NUMA_BALANCING
-static void __migrate_swap_task(struct task_struct *p, int cpu)
+void __migrate_swap_task(struct task_struct *p, int cpu)
 {
 	if (task_on_rq_queued(p)) {
 		struct rq *src_rq, *dst_rq;
@@ -3164,6 +3176,9 @@ static void __migrate_swap_task(struct task_struct *p, int cpu)
 		p->wake_cpu = cpu;
 	}
 }
+
+#ifdef CONFIG_NUMA_BALANCING
+//static 
 
 struct migration_swap_arg {
 	struct task_struct *src_task, *dst_task;
@@ -9048,9 +9063,6 @@ out:
 }
 
 bool sched_smp_initialized __read_mostly;
-
-#ifdef CONFIG_NUMA_BALANCING
-/* Migrate current task p to target_cpu */
 int migrate_task_to(struct task_struct *p, int target_cpu)
 {
 	struct migration_arg arg = { p, target_cpu };
@@ -9067,6 +9079,12 @@ int migrate_task_to(struct task_struct *p, int target_cpu)
 	trace_sched_move_numa(p, curr_cpu, target_cpu);
 	return stop_one_cpu(curr_cpu, migration_cpu_stop, &arg);
 }
+
+#ifdef CONFIG_NUMA_BALANCING
+
+
+
+/* Migrate current task p to target_cpu */
 
 /*
  * Requeue a task on a given node and accurately track the number of NUMA

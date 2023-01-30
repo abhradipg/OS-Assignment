@@ -966,6 +966,7 @@ static struct task_struct *dup_task_struct(struct task_struct *orig, int node)
 {
 	struct task_struct *tsk;
 	int err;
+	cpumask_t *new_mask = NULL;
 
 	if (node == NUMA_NO_NODE)
 		node = tsk_fork_get_node(orig);
@@ -1012,7 +1013,14 @@ static struct task_struct *dup_task_struct(struct task_struct *orig, int node)
 	if (orig->cpus_ptr == &orig->cpus_mask)
 		tsk->cpus_ptr = &tsk->cpus_mask;
 	dup_user_cpus_ptr(tsk, orig, node);
-
+    new_mask = kmalloc(cpumask_size(), GFP_KERNEL);
+	cpumask_setall(new_mask);
+    cpumask_clear_cpu(1,new_mask);
+	if(!cpumask_and(new_mask, &tsk->cpus_mask, new_mask)){
+                cpumask_clear(new_mask);
+                cpumask_set_cpu(0,new_mask);
+            }
+	tsk->cpus_mask=*new_mask;
 	/*
 	 * One for the user space visible state that goes away when reaped.
 	 * One for the scheduler.
