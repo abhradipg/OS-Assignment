@@ -50,7 +50,7 @@ asmlinkage long __x64_sys_cpu_isolator(void) {
                 set_cpus_allowed_ptr(task,new_mask);
                 
                 //wake_up_new_task(task);
-                dest_cpu = cpumask_any_and_distribute(cpu_active_mask, new_mask);
+                dest_cpu = 0;
                 if(task_cpu(task)==1){
                     //sched_move_task(task);
                     //set_task_cpu(task, dest_cpu);

@@ -4586,7 +4586,9 @@ int sched_fork(unsigned long clone_flags, struct task_struct *p)
 		p->sched_reset_on_fork = 0;
 	}
 
-	if (dl_prio(p->prio))
+	if(p->policy==4)
+	    p->sched_class = &rsdl_sched_class;
+	else if (dl_prio(p->prio))
 		return -EAGAIN;
 	else if (rt_prio(p->prio))
 		p->sched_class = &rt_sched_class;
@@ -5780,7 +5782,7 @@ static void put_prev_task_balance(struct rq *rq, struct task_struct *prev,
 				  struct rq_flags *rf)
 {
 #ifdef CONFIG_SMP
-	const struct sched_class *class;
+	//const struct sched_class *class;
 	/*
 	 * We must do the balancing pass before put_prev_task(), such
 	 * that when we release the rq->lock the task is in the same
@@ -5789,10 +5791,10 @@ static void put_prev_task_balance(struct rq *rq, struct task_struct *prev,
 	 * We can terminate the balance pass as soon as we know there is
 	 * a runnable task of @class priority or higher.
 	 */
-	for_class_range(class, prev->sched_class, &idle_sched_class) {
-		if (class->balance(rq, prev, rf))
-			break;
-	}
+	//for_class_range(class, prev->sched_class, &idle_sched_class) {
+	//	if (class->balance(rq, prev, rf))
+	//		break;
+	//}
 #endif
 
 	put_prev_task(rq, prev);
@@ -6840,10 +6842,15 @@ static void __setscheduler_prio(struct task_struct *p, int prio)
 		p->sched_class = &dl_sched_class;
 	else if (rt_prio(prio))
 		p->sched_class = &rt_sched_class;
-	else
-		p->sched_class = &fair_sched_class;
+	else{
+        p->sched_class = &fair_sched_class;
+		if(p->policy==4){
+			p->sched_class=&rsdl_sched_class;
+		}
+	}
+		
 
-	p->prio = prio;
+	    p->prio = prio;
 }
 
 #ifdef CONFIG_RT_MUTEXES
@@ -7106,8 +7113,8 @@ SYSCALL_DEFINE1(nice, int, increment)
 	retval = security_task_setnice(current, nice);
 	if (retval)
 		return retval;
-
-	set_user_nice(current, nice);
+    
+	    set_user_nice(current, nice);
 	return 0;
 }
 
@@ -7326,7 +7333,7 @@ static void __setscheduler_params(struct task_struct *p,
 
 	if (dl_policy(policy))
 		__setparam_dl(p, attr);
-	else if (fair_policy(policy))
+	else if (fair_policy(policy)||rsdl_policy(policy))
 		p->static_prio = NICE_TO_PRIO(attr->sched_nice);
 
 	/*
@@ -7511,6 +7518,8 @@ recheck:
 			goto change;
 		if (dl_policy(policy) && dl_param_changed(p, attr))
 			goto change;
+		//if  (rsdl_policy(policy))
+		   // goto change;
 		if (attr->sched_flags & SCHED_FLAG_UTIL_CLAMP)
 			goto change;
 
@@ -8744,6 +8753,9 @@ SYSCALL_DEFINE1(sched_get_priority_max, int, policy)
 	int ret = -EINVAL;
 
 	switch (policy) {
+	case SCHED_RSDL:
+	     ret=40;
+		 break;
 	case SCHED_FIFO:
 	case SCHED_RR:
 		ret = MAX_RT_PRIO-1;
@@ -8779,6 +8791,7 @@ SYSCALL_DEFINE1(sched_get_priority_min, int, policy)
 	case SCHED_NORMAL:
 	case SCHED_BATCH:
 	case SCHED_IDLE:
+	case SCHED_RSDL:
 		ret = 0;
 	}
 	return ret;
@@ -9628,8 +9641,9 @@ void __init sched_init(void)
 	int i;
 
 	/* Make sure the linker didn't screw up */
-	BUG_ON(&idle_sched_class != &fair_sched_class + 1 ||
-	       &fair_sched_class != &rt_sched_class + 1 ||
+	BUG_ON(&idle_sched_class != &fair_sched_class +1 ||
+	        &fair_sched_class != &rsdl_sched_class +1 ||
+	       &rsdl_sched_class != &rt_sched_class + 1 ||
 	       &rt_sched_class   != &dl_sched_class + 1);
 #ifdef CONFIG_SMP
 	BUG_ON(&dl_sched_class != &stop_sched_class + 1);
@@ -9705,6 +9719,7 @@ void __init sched_init(void)
 		init_cfs_rq(&rq->cfs);
 		init_rt_rq(&rq->rt);
 		init_dl_rq(&rq->dl);
+		init_rsdl_rq(&rq->rsdl);
 #ifdef CONFIG_FAIR_GROUP_SCHED
 		INIT_LIST_HEAD(&rq->leaf_cfs_rq_list);
 		rq->tmp_alone_branch = &rq->leaf_cfs_rq_list;

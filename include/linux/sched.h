@@ -733,7 +733,9 @@ struct task_struct {
 	struct thread_info		thread_info;
 #endif
 	unsigned int			__state;
-
+	int inactivequeue;
+	int currqueue;
+    int defindex;
 #ifdef CONFIG_PREEMPT_RT
 	/* saved state for "spinlock sleepers" */
 	unsigned int			saved_state;
@@ -769,6 +771,7 @@ struct task_struct {
 	int				wake_cpu;
 #endif
 	int				on_rq;
+	int				on_rsdl;
 
 	int				prio;
 	int				static_prio;
@@ -1003,6 +1006,9 @@ struct task_struct {
 
 	u64				utime;
 	u64				stime;
+	u64				rsdl_start;
+	u64				remaining;
+	u64				quota;		
 #ifdef CONFIG_ARCH_HAS_SCALED_CPUTIME
 	u64				utimescaled;
 	u64				stimescaled;

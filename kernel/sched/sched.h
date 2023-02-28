@@ -187,6 +187,11 @@ static inline int fair_policy(int policy)
 	return policy == SCHED_NORMAL || policy == SCHED_BATCH;
 }
 
+static inline int rsdl_policy(int policy)
+{
+	return policy == SCHED_RSDL;
+}
+
 static inline int rt_policy(int policy)
 {
 	return policy == SCHED_FIFO || policy == SCHED_RR;
@@ -199,7 +204,7 @@ static inline int dl_policy(int policy)
 static inline bool valid_policy(int policy)
 {
 	return idle_policy(policy) || fair_policy(policy) ||
-		rt_policy(policy) || dl_policy(policy);
+		rt_policy(policy) || dl_policy(policy) || rsdl_policy(policy);
 }
 
 static inline int task_has_idle_policy(struct task_struct *p)
@@ -351,6 +356,7 @@ extern int  dl_cpu_busy(int cpu, struct task_struct *p);
 
 struct cfs_rq;
 struct rt_rq;
+struct rsdl_rq;
 
 extern struct list_head task_groups;
 
@@ -663,6 +669,35 @@ struct cfs_rq {
 #endif /* CONFIG_CFS_BANDWIDTH */
 #endif /* CONFIG_FAIR_GROUP_SCHED */
 };
+struct rsdl_node{
+   struct task_struct *p;
+   struct rsdl_node *next;
+};
+struct rsdl_head{
+	unsigned int nr_processes;
+	u64 alloted;
+	u64 start_time;
+	u64 remaining;
+	struct rsdl_node *start,*end;
+};
+
+struct rsdl_array {
+	struct rsdl_head active[41];
+};
+
+/*rsdl runqueue*/
+struct rsdl_rq {
+	struct rsdl_array arrayoftask;
+	int curr_queue;
+	unsigned int rsdl_nr_running;
+    struct task_struct *curr;
+	int			rsdl_throttled;
+	u64			rsdl_time;
+	u64			rsdl_runtime;
+	/* Nests inside the rq lock: */
+	raw_spinlock_t		rsdl_runtime_lock;
+};
+
 
 static inline int rt_bandwidth_enabled(void)
 {
@@ -999,6 +1034,7 @@ struct rq {
 	struct cfs_rq		cfs;
 	struct rt_rq		rt;
 	struct dl_rq		dl;
+	struct rsdl_rq		rsdl;
 
 #ifdef CONFIG_FAIR_GROUP_SCHED
 	/* list of leaf cfs_rq on this CPU: */
@@ -2260,6 +2296,7 @@ extern const struct sched_class stop_sched_class;
 extern const struct sched_class dl_sched_class;
 extern const struct sched_class rt_sched_class;
 extern const struct sched_class fair_sched_class;
+extern const struct sched_class rsdl_sched_class;
 extern const struct sched_class idle_sched_class;
 
 static inline bool sched_stop_runnable(struct rq *rq)
@@ -2270,6 +2307,11 @@ static inline bool sched_stop_runnable(struct rq *rq)
 static inline bool sched_dl_runnable(struct rq *rq)
 {
 	return rq->dl.dl_nr_running > 0;
+}
+
+static inline bool sched_rsdl_runnable(struct rq *rq)
+{
+	return rq->rsdl.rsdl_nr_running > 0;
 }
 
 static inline bool sched_rt_runnable(struct rq *rq)
@@ -2354,6 +2396,7 @@ extern void update_max_interval(void);
 
 extern void init_sched_dl_class(void);
 extern void init_sched_rt_class(void);
+extern void init_sched_rsdl_class(void);
 extern void init_sched_fair_class(void);
 
 extern void reweight_task(struct task_struct *p, int prio);
@@ -2474,6 +2517,13 @@ static inline int hrtick_enabled(struct rq *rq)
 }
 
 static inline int hrtick_enabled_fair(struct rq *rq)
+{
+	if (!sched_feat(HRTICK))
+		return 0;
+	return hrtick_enabled(rq);
+}
+
+static inline int hrtick_enabled_rsdl(struct rq *rq)
 {
 	if (!sched_feat(HRTICK))
 		return 0;
@@ -2766,7 +2816,7 @@ static inline void resched_latency_warn(int cpu, u64 latency) {}
 extern void init_cfs_rq(struct cfs_rq *cfs_rq);
 extern void init_rt_rq(struct rt_rq *rt_rq);
 extern void init_dl_rq(struct dl_rq *dl_rq);
-
+extern void init_rsdl_rq(struct rsdl_rq *rsdl_rq);
 extern void cfs_bandwidth_usage_inc(void);
 extern void cfs_bandwidth_usage_dec(void);
 

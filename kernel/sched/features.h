@@ -5,7 +5,7 @@
  * rip the spread apart.
  */
 SCHED_FEAT(GENTLE_FAIR_SLEEPERS, true)
-
+SCHED_FEAT(GENTLE_RSDL_SLEEPERS, true)
 /*
  * Place new tasks ahead so that they do not starve already running
  * tasks

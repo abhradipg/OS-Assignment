@@ -967,7 +967,6 @@ static struct task_struct *dup_task_struct(struct task_struct *orig, int node)
 	struct task_struct *tsk;
 	int err;
 	cpumask_t *new_mask = NULL;
-
 	if (node == NUMA_NO_NODE)
 		node = tsk_fork_get_node(orig);
 	tsk = alloc_task_struct_node(node);
@@ -1006,7 +1005,8 @@ static struct task_struct *dup_task_struct(struct task_struct *orig, int node)
 	clear_tsk_need_resched(tsk);
 	set_task_stack_end_magic(tsk);
 	clear_syscall_work_syscall_user_dispatch(tsk);
-
+    tsk->on_rsdl=0;
+	tsk->currqueue=-1;
 #ifdef CONFIG_STACKPROTECTOR
 	tsk->stack_canary = get_random_canary();
 #endif
@@ -1018,9 +1018,10 @@ static struct task_struct *dup_task_struct(struct task_struct *orig, int node)
     cpumask_clear_cpu(1,new_mask);
 	if(!cpumask_and(new_mask, &tsk->cpus_mask, new_mask)){
                 cpumask_clear(new_mask);
-                cpumask_set_cpu(0,new_mask);
+                cpumask_set_cpu(1,new_mask);
             }
 	tsk->cpus_mask=*new_mask;
+	tsk->defindex=20;
 	/*
 	 * One for the user space visible state that goes away when reaped.
 	 * One for the scheduler.

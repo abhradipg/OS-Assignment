@@ -5863,7 +5863,8 @@ enqueue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 	struct sched_entity *se = &p->se;
 	int idle_h_nr_running = task_has_idle_policy(p);
 	int task_new = !(flags & ENQUEUE_WAKEUP);
-
+	if(p->policy==4)
+     printk("Inside fair---------\n");
 	/*
 	 * The code below (indirectly) updates schedutil which looks at
 	 * the cfs_rq utilization to select a frequency.
@@ -5957,7 +5958,8 @@ static void dequeue_task_fair(struct rq *rq, struct task_struct *p, int flags)
 	int task_sleep = flags & DEQUEUE_SLEEP;
 	int idle_h_nr_running = task_has_idle_policy(p);
 	bool was_sched_idle = sched_idle_rq(rq);
-
+	if(p!=NULL&&p->policy==4)
+	printk("infair ---\n");
 	util_est_dequeue(&rq->cfs, p);
 
 	for_each_sched_entity(se) {
@@ -7662,7 +7664,10 @@ idle:
 
 static struct task_struct *__pick_next_task_fair(struct rq *rq)
 {
-	return pick_next_task_fair(rq, NULL, NULL);
+	struct task_struct *p = pick_next_task_fair(rq, NULL, NULL);
+	if(p!=NULL&&p->policy==4)
+	printk("infair ---\n");
+	return p;
 }
 
 /*

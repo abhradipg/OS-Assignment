@@ -116,6 +116,7 @@ struct clone_args {
 #define SCHED_RR		2
 #define SCHED_BATCH		3
 /* SCHED_ISO: reserved but not implemented yet */
+#define SCHED_RSDL		4
 #define SCHED_IDLE		5
 #define SCHED_DEADLINE		6
 
